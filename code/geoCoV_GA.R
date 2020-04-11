@@ -36,7 +36,9 @@ census_key <- "XXXXX" # INSERT PERSONAL CENSUS KEY HERE
 # PACKAGES #
 ############
 
+library(broom)
 library(dplyr)
+library(ggplot2)
 library(readr)
 library(sp)
 library(tigris)
@@ -122,16 +124,16 @@ scale <- list("SpatialPolygonsRescale",
               fill = c("transparent", "black"), # colors of scale
               offset = c(80000+10000, 3359000+2000) # location in plot
               #offset = c(0,0) # location in plot
-)
+              )
 
 ## Custom compass rose
 arrow <- list("SpatialPolygonsRescale", 
               sp::layout.north.arrow(),
               scale = 25000, # size of plot 
               offset = c(80000+150000, 3359000+1000) # location in plot (just above and middle of scale)
-)
+              )
 
-## Cumulative cases (unadjusted)
+## Plot of cumulative cases (unadjusted)
 ### Colorkey scaled by count per zipcode
 at_break <- seq(from = 0, 
                 to = max(CoV_GA_proj$cumulative),
@@ -141,7 +143,8 @@ at_names <- round(seq(from = 0,
                       to = max(CoV_GA_proj$cumulative),
                       by = max(CoV_GA_proj$cumulative)/6
                       ),
-                  digits = 0)  # set name of breaks in colorkey
+                  digits = 0
+                  )  # set name of breaks in colorkey
 ### Plot
 grDevices::png(file = "figures/COVID_Georgia_Cumulative.png", height = 1000*f, width = 1000*f)
 sp::spplot(CoV_GA_proj, # data
@@ -155,7 +158,6 @@ sp::spplot(CoV_GA_proj, # data
                                          labels = at_names, # set name of breaks to match data
                                          cex = 2*f, # size of labels of colorkey
                                          fontface = 1, # set font style (normal)
-                                         #fontfamily = 'LM Roman 10', # set font name
                                          legend = "frequency" # label of colorkey
                                          )
                            ),
@@ -164,7 +166,7 @@ sp::spplot(CoV_GA_proj, # data
            )
 dev.off()
 
-## Cumulative per capita
+## Plot of cumulative per capita
 ### Colorkey scaled by count per zipcode
 at_break <- seq(from = 0,
                 to = max(CoV_GA_proj$cumpercap),
@@ -189,12 +191,40 @@ sp::spplot(CoV_GA_proj, # data
                                          labels = at_names, # set name of breaks to match data
                                          cex = 2*f, # size of labels of colorkey
                                          fontface = 1, # set font style (normal)
-                                         #fontfamily = 'LM Roman 10', # set font name
                                          legend = "frequency" # label of colorkey
                                          )
                            ),
            sub = list(label = "Copywrite Ian Buller", cex = 1*f), # subtitle for credit
            sp.layout = list(scale, text1, text2, arrow) # additions: scale and north arrow
            )
+dev.off()
+
+## ggplot of cumulative cases per capita
+### helpful material: https://cengel.github.io/rspatial/4_Mapping.nb.html
+### Data preparation, ggplot2 requires a data.frame
+CoV_GA_df <- broom::tidy(CoV_GA_proj) # convert to tidy data frame
+CoV_GA_proj$polyID <- sapply(slot(CoV_GA_proj, "polygons"), function(x) slot(x, "ID")) # preserve polygon id
+CoV_GA_df <- merge(CoV_GA_df, CoV_GA_proj, by.x = "id", by.y="polyID") # merge data
+
+f <- 1 # exansion factor
+png(file = "figures/COVID_Georgia_Cumulative_percapita_ggplot.png", height = 1000*f, width = 1000*f)
+ggplot2::ggplot() +                                      # initialize ggplot object
+  ggplot2::geom_polygon(                                 # make a polygon
+    data = CoV_GA_df,                                    # data frame
+    ggplot2::aes(x = long, y = lat, group = group,       # coordinates, and group them by polygons
+        fill = ggplot2::cut_number(cumpercap, 6)),       # variable to use for filling
+    colour = "black") +                                  # color of polygon borders
+  ggplot2::scale_fill_brewer("Cumulative cases per capita",# title of colorkey 
+                             palette = "Greys",          # fill with brewer colors 
+                             direction = -1,             # reverse colors in colorkey
+                             guide = ggplot2::guide_legend(reverse = T)) +  # reverse order of colokey
+  ggplot2::ggtitle("Cumulative SARS-CoV-2 cases per capita (January 22, 2020 - April 10, 2020)", # add title
+                   subtitle = "Copywrite Ian Buller") +  # add subtitle
+  ggplot2::theme(line = ggplot2::element_blank(),        # remove axis lines
+        axis.text = ggplot2::element_blank(),            # remove tickmarks
+        axis.title = ggplot2::element_blank(),           # remove axis labels
+        panel.background = ggplot2::element_blank(),     # remove background gridlines
+        text = ggplot2::element_text(size = 15*f)) +     # set font size
+  ggplot2::coord_equal()                                 # both axes the same scale
 dev.off()
 # -------------------- END OF CODE -------------------- #
