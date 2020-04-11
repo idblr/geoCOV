@@ -38,3 +38,7 @@ rsconnect/
 
 # Mac OSX
 *.DS_Store
+
+# Private and Sandbox R code
+*/COVID.R
+*/geoCoV_GA_private.R
