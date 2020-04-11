@@ -272,7 +272,7 @@ pal_rate <- leaflet::colorNumeric(palette = "Greys", domain = CoV_GA_pop$cumrate
 
 ### Create leaflet plot
 ga_m1 <- leaflet::leaflet(CoV_GA_pop) %>% # initial data = Georiga county-level COVID-19 data
-  leaflet::setView(lng = -83, lat = 32, zoom = 12) %>% # starting location (Georgia, USA)
+  leaflet::setView(lng = -83, lat = 32, zoom = 7) %>% # starting location (Georgia, USA)
   leaflet::addProviderTiles(providers$OpenStreetMap.BlackAndWhite, group = "OSM (Default)") %>% # default basemap
   leaflet::addProviderTiles(providers$Esri.WorldTopoMap, group = "Terrain") %>% # additional basemap
   leaflet::addProviderTiles(providers$OpenTopoMap, group = "Topographic") %>% # additional basemap
@@ -287,7 +287,7 @@ ga_m1 <- leaflet::leaflet(CoV_GA_pop) %>% # initial data = Georiga county-level 
                        group = "Cumulative Rate"
   ) %>%
   leaflet::addLayersControl(baseGroups = c("OSM (Default)", "Terrain", "Topographic"),
-                            overlayGroups = c("Cumulative Cases", "Cumulative Rate per 100,000"),
+                            overlayGroups = c("Cumulative Cases", "Cumulative Rate"),
                             options = layersControlOptions(collapsed = FALSE)
   ) %>% # layer selection
   addLegend("topright", pal = pal_cum, values = ~cumulative,
