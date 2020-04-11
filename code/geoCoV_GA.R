@@ -102,6 +102,9 @@ names(CoV_GA_pop)[names(CoV_GA_pop) == "value"] <- "Pop2010" # rename 2010 popul
 # Calculate cumulative cases per capita
 CoV_GA_pop$cumpercap <- CoV_GA_pop$cumulative/CoV_GA_pop$Pop2010
 
+# Calculate cumulative cases per 100,000
+CoV_GA_pop$cumrate <- CoV_GA_pop$cumpercap*100000
+
 # Geographic Projection
 ## NAD83 / UTM zone 17N (Georgia, USA)
 CoV_GA_proj <- sp::spTransform(CoV_GA_pop, sp::CRS("+init=EPSG:26917")) 
@@ -199,13 +202,14 @@ sp::spplot(CoV_GA_proj, # data
            )
 dev.off()
 
-## ggplot of cumulative cases per capita
+## Using ggplot
 ### helpful material: https://cengel.github.io/rspatial/4_Mapping.nb.html
 ### Data preparation, ggplot2 requires a data.frame
 CoV_GA_df <- broom::tidy(CoV_GA_proj) # convert to tidy data frame
 CoV_GA_proj$polyID <- sapply(slot(CoV_GA_proj, "polygons"), function(x) slot(x, "ID")) # preserve polygon id
 CoV_GA_df <- merge(CoV_GA_df, CoV_GA_proj, by.x = "id", by.y="polyID") # merge data
 
+### Plot of cumulative cases per capita
 f <- 1 # exansion factor
 png(file = "figures/COVID_Georgia_Cumulative_percapita_ggplot.png", height = 1000*f, width = 1000*f)
 ggplot2::ggplot() +                                      # initialize ggplot object
@@ -225,6 +229,29 @@ ggplot2::ggplot() +                                      # initialize ggplot obj
         axis.title = ggplot2::element_blank(),           # remove axis labels
         panel.background = ggplot2::element_blank(),     # remove background gridlines
         text = ggplot2::element_text(size = 15*f)) +     # set font size
+  ggplot2::coord_equal()                                 # both axes the same scale
+dev.off()
+
+### Plot of cumulative cases per 100,000
+f <- 1 # exansion factor
+png(file = "figures/COVID_Georgia_Cumulative_Rate_ggplot.png", height = 1000*f, width = 1000*f)
+ggplot2::ggplot() +                                      # initialize ggplot object
+  ggplot2::geom_polygon(                                 # make a polygon
+    data = CoV_GA_df,                                    # data frame
+    ggplot2::aes(x = long, y = lat, group = group,       # coordinates, and group them by polygons
+                 fill = ggplot2::cut_number(cumrate, 6)),       # variable to use for filling
+    colour = "black") +                                  # color of polygon borders
+  ggplot2::scale_fill_brewer("Cumulative rate",# title of colorkey 
+                             palette = "Greys",          # fill with brewer colors 
+                             direction = -1,             # reverse colors in colorkey
+                             guide = ggplot2::guide_legend(reverse = T)) +  # reverse order of colokey
+  ggplot2::ggtitle("Cumulative SARS-CoV-2 rate per 100,000 (January 22, 2020 - April 10, 2020)", # add title
+                   subtitle = "Copywrite Ian Buller") +  # add subtitle
+  ggplot2::theme(line = ggplot2::element_blank(),        # remove axis lines
+                 axis.text = ggplot2::element_blank(),            # remove tickmarks
+                 axis.title = ggplot2::element_blank(),           # remove axis labels
+                 panel.background = ggplot2::element_blank(),     # remove background gridlines
+                 text = ggplot2::element_text(size = 15*f)) +     # set font size
   ggplot2::coord_equal()                                 # both axes the same scale
 dev.off()
 # -------------------- END OF CODE -------------------- #
