@@ -1,4 +1,4 @@
-# geoCOVID
+# geoCOV
 
 ### Mapping SARS-CoV-2 Cases in United States Counties (2020) in R
 
