@@ -1,0 +1,200 @@
+# ------------------------------- #
+# SARS-CoV-2 in Georgia, U.S.A.
+# ------------------------------- #
+#
+# Created by: Ian Buller, Ph.D., M.A. (GitHub: @idblr)
+# Created on: April 11, 2020
+#
+# Recently modified by: 
+# Recently modified on: 
+#
+# Notes:
+# A) 04/11/2020 (IB) - Basic data importation, management, and visualization of SARS-CoV-2 data from Johns Hopkins University
+# B) 04/11/2020 (IB) - Data visualization of cumulative SARS-CoV-2 cases in Georgia January 22, 2020 to April 10, 2020 (raw and per capita)
+# C) 04/11/2020 (IB) - Data visualizations are static, greyscale, and set at sextiles (not to be widely disseminated)
+# D) 04/11/2020 (IB) - Population from 2010 census and GIS shapefile of GA counties from (must use your own key)
+# ------------------------------- #
+
+####################
+# SETTINGS & PATHS #
+####################
+
+# the URL of the Johns Hopkins University data page
+# "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv"
+jhu_url <- paste("https://raw.githubusercontent.com/CSSEGISandData/", 
+                 "COVID-19/master/csse_covid_19_data/", 
+                 "csse_covid_19_time_series/",
+                 "time_series_covid19_confirmed_US.csv",
+                 sep = ""
+                 )
+
+# U.S. Census API key
+## Obtain one at http://api.census.gov/data/key_signup.html
+census_key <- "XXXXX" # INSERT PERSONAL CENSUS KEY HERE
+
+############
+# PACKAGES #
+############
+
+library(dplyr)
+library(readr)
+library(sp)
+library(tigris)
+library(tidycensus)
+
+####################
+# DATA IMPORTATION #
+####################
+
+# SARS-CoV-2 daily case data in the United States
+covid <- readr::read_csv(jhu_url)
+
+# County Shapefiles (Based on 2018 County Boundaries)
+tigris_spdf <- tigris::counties()
+str(tigris_spdf)
+
+# 2010 Population U.S. Cenus Bureau
+vars_10 <- "P001001" # Population and total land area
+
+GA_pop_2010 <- tidycensus::get_decennial(geography = "county",
+                                         variables = vars_10,
+                                         year = 2010,
+                                         state = c("Georgia"),
+                                         geometry = TRUE,
+                                         key = census_key
+                                         )
+
+####################
+# DATA MANAGEMENT #
+####################
+
+# Fix FIPS in covid dataset to include leading 0 for states with STATE FIPS < 10
+covid$FIPS <- ifelse(covid$FIPS > 100 & covid$FIPS < 10000,
+                     paste0("0", as.character(covid$FIPS)),
+                     as.character(covid$FIPS)
+                     )
+# Reformat column names for dates to match world standard
+names(covid)[12:ncol(covid)] <- format(as.Date(names(covid[12:ncol(covid)]), format = "%m/%d/%y"),
+                                       format = "%d/%m/%y"
+                                       )
+
+# Merge case data with county shapefile
+geoCoV <- tigris::geo_join(tigris_spdf, covid, "GEOID", "FIPS")
+tigris_spdf <- NULL # conserve memory, remove full county-level tigris data
+
+# Subset for complete data
+geoCoV_na <- geoCoV[is.na(geoCoV$UID),] # jurisdictions with missing case data are U.S. territories 
+geoCoV <- geoCoV[!is.na(geoCoV$UID),] # omit jurisdictionss with missing case data
+names(geoCoV)[29:ncol(geoCoV)] <-  format(as.Date(substring(names(geoCoV[29:ncol(geoCoV)]), 2), format = "%d.%m.%y"), format = "%d/%m/%y") # reformat column names for dates to match world standard
+
+# Calculate cumulative cases
+geoCoV$cumulative <- rowSums(geoCoV@data[29:ncol(geoCoV)], na.rm = TRUE) 
+
+# Subset for Georiga
+CoV_GA <- geoCoV[geoCoV@data$Province_State == "Georgia",]
+
+# Merge case data with population data
+CoV_GA_pop <- tigris::geo_join(CoV_GA, GA_pop_2010, "GEOID", "GEOID")
+names(CoV_GA_pop)[names(CoV_GA_pop) == "value"] <- "Pop2010" # rename 2010 population variable
+
+# Calculate cumulative cases per capita
+CoV_GA_pop$cumpercap <- CoV_GA_pop$cumulative/CoV_GA_pop$Pop2010
+
+# Geographic Projection
+## NAD83 / UTM zone 17N (Georgia, USA)
+CoV_GA_proj <- sp::spTransform(CoV_GA_pop, sp::CRS("+init=EPSG:26917")) 
+
+######################
+# DATA VISUALIZATION #
+######################
+
+# Cumulative SARS-CoV-2 Cases in Georgia (22/01/2020 - 04/10/2020)
+
+f <- 1 # expansion factor
+## The scale argument sets length of bar in map units
+text1 <- list("sp.text", c(80000+10000, 3359000+15000), "0 km", cex = 1*f) # lower limit set just above scale
+text2 <- list("sp.text", c(80000+110000, 3359000+15000), "100 km", cex = 1*f) # upper limit set just above scale
+
+## Custom scale
+scale <- list("SpatialPolygonsRescale",
+              sp::layout.scale.bar(),
+              scale = 100000, # 100 km
+              fill = c("transparent", "black"), # colors of scale
+              offset = c(80000+10000, 3359000+2000) # location in plot
+              #offset = c(0,0) # location in plot
+)
+
+## Custom compass rose
+arrow <- list("SpatialPolygonsRescale", 
+              sp::layout.north.arrow(),
+              scale = 25000, # size of plot 
+              offset = c(80000+150000, 3359000+1000) # location in plot (just above and middle of scale)
+)
+
+## Cumulative cases (unadjusted)
+### Colorkey scaled by count per zipcode
+at_break <- seq(from = 0, 
+                to = max(CoV_GA_proj$cumulative),
+                by = max(CoV_GA_proj$cumulative)/6
+                ) # set breaks in colorkey (must be one more than default to fit min and max values)
+at_names <- round(seq(from = 0, 
+                      to = max(CoV_GA_proj$cumulative),
+                      by = max(CoV_GA_proj$cumulative)/6
+                      ),
+                  digits = 0)  # set name of breaks in colorkey
+### Plot
+grDevices::png(file = "figures/COVID_Georgia_Cumulative.png", height = 1000*f, width = 1000*f)
+sp::spplot(CoV_GA_proj, # data
+           "cumulative", # column name
+           col.regions = gray.colors(length(at_break)), # color palette
+           at = at_break, 
+           par.settings = list(axis.line = list(col =  'transparent')), # remove default box around plot
+           colorkey = list(labels = list(at = c(at_break[-length(at_break)],
+                                                at_break[length(at_break)]-0.000000001
+                                                ), # set top break a little less than default (to include max value on colorkey)
+                                         labels = at_names, # set name of breaks to match data
+                                         cex = 2*f, # size of labels of colorkey
+                                         fontface = 1, # set font style (normal)
+                                         #fontfamily = 'LM Roman 10', # set font name
+                                         legend = "frequency" # label of colorkey
+                                         )
+                           ),
+           sub = list(label = "Copywrite Ian Buller", cex = 1*f), # subtitle for credit
+           sp.layout = list(scale, text1, text2, arrow) # additions: scale and north arrow
+           )
+dev.off()
+
+## Cumulative per capita
+### Colorkey scaled by count per zipcode
+at_break <- seq(from = 0,
+                to = max(CoV_GA_proj$cumpercap),
+                by = max(CoV_GA_proj$cumpercap)/6
+                ) # set breaks in colorkey (must be one more than default to fit min and max values)
+at_names <- format(round(seq(from = 0,
+                             to = max(CoV_GA_proj$cumpercap),
+                             by = max(CoV_GA_proj$cumpercap)/6
+                             ), digits = 2
+                         ), nsmall = 1
+                   )   # set name of breaks in colorkey
+### Plot
+grDevices::png(file = "figures/COVID_Georgia_Cumulative_percapita.png", height = 1000*f, width = 1000*f)
+sp::spplot(CoV_GA_proj, # data
+           "cumpercap", # column name
+           col.regions = gray.colors(length(at_break)), # color palette
+           at = at_break, 
+           par.settings = list(axis.line = list(col =  'transparent')), # remove default box around plot
+           colorkey = list(labels = list(at = c(at_break[-length(at_break)],
+                                                at_break[length(at_break)]-0.000000001
+                                                ), # set top break a little less than default (to include max value on colorkey)
+                                         labels = at_names, # set name of breaks to match data
+                                         cex = 2*f, # size of labels of colorkey
+                                         fontface = 1, # set font style (normal)
+                                         #fontfamily = 'LM Roman 10', # set font name
+                                         legend = "frequency" # label of colorkey
+                                         )
+                           ),
+           sub = list(label = "Copywrite Ian Buller", cex = 1*f), # subtitle for credit
+           sp.layout = list(scale, text1, text2, arrow) # additions: scale and north arrow
+           )
+dev.off()
+# -------------------- END OF CODE -------------------- #
