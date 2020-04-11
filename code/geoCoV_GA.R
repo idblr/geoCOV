@@ -13,6 +13,7 @@
 # B) 04/11/2020 (IB) - Data visualization of cumulative SARS-CoV-2 cases in Georgia January 22, 2020 to April 10, 2020 (raw and per capita)
 # C) 04/11/2020 (IB) - Data visualizations are static, greyscale, and set at sextiles (not to be widely disseminated)
 # D) 04/11/2020 (IB) - Population from 2010 census and GIS shapefile of GA counties from (must use your own key)
+# E) 04/11/2020 (IB) - Added code for interactive leaflet plot (not to be widely disseminated)
 # ------------------------------- #
 
 ####################
@@ -303,6 +304,6 @@ ga_m1 <- leaflet::leaflet(CoV_GA_pop) %>% # initial data = Georiga county-level 
 ga_m1 # display leaflet plot
 
 ### export leaflet plot
-htmlwidgets::saveWidget(ga_m1, file = "COVID_Georgia_Leaflet.html", selfcontained = TRUE)
+htmlwidgets::saveWidget(ga_m1, file = "figures/COVID_Georgia_Leaflet.html", selfcontained = TRUE)
 
 # -------------------- END OF CODE -------------------- #
