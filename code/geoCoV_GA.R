@@ -39,6 +39,8 @@ census_key <- "XXXXX" # INSERT PERSONAL CENSUS KEY HERE
 library(broom)
 library(dplyr)
 library(ggplot2)
+library(htmlwidgets)
+library(leaflet)
 library(readr)
 library(sp)
 library(tigris)
@@ -254,4 +256,53 @@ ggplot2::ggplot() +                                      # initialize ggplot obj
                  text = ggplot2::element_text(size = 15*f)) +     # set font size
   ggplot2::coord_equal()                                 # both axes the same scale
 dev.off()
+
+## Leaflet Plot
+### Work with unprojected spatialpolygonsdataframe CoV_GA_pop
+### Project to WGS84 EPSG:4326
+CoV_GA_pop <- sp::spTransform(CoV_GA_pop, CRS("+init=epsg:4326"))
+
+### Popups
+CoV_GA_pop$popup1 <- paste(CoV_GA_pop$NAME, "County:", format(round(CoV_GA_pop$cumulative, digits = 0), big.mark = ",", trim = T), "total cases", sep = " ")
+CoV_GA_pop$popup2 <- paste(CoV_GA_pop$NAME, "County:", format(round(CoV_GA_pop$cumrate, digits = 0), big.mark = ",", trim = T), "per 100,000", sep = " ")
+
+### Palettes
+pal_cum <- leaflet::colorNumeric(palette = "Greys", domain = CoV_GA_pop$cumulative)
+pal_rate <- leaflet::colorNumeric(palette = "Greys", domain = CoV_GA_pop$cumrate)
+
+### Create leaflet plot
+ga_m1 <- leaflet::leaflet(CoV_GA_pop) %>% # initial data = Georiga county-level COVID-19 data
+  leaflet::setView(lng = -83, lat = 32, zoom = 12) %>% # starting location (Georgia, USA)
+  leaflet::addProviderTiles(providers$OpenStreetMap.BlackAndWhite, group = "OSM (Default)") %>% # default basemap
+  leaflet::addProviderTiles(providers$Esri.WorldTopoMap, group = "Terrain") %>% # additional basemap
+  leaflet::addProviderTiles(providers$OpenTopoMap, group = "Topographic") %>% # additional basemap
+  leaflet::addPolygons(data = CoV_GA_pop, color = "black", weight = 1, smoothFactor = 0.5, opacity = 1,
+                       fillOpacity = 0.5, fillColor = ~pal_cum(cumulative), popup = ~popup1, # stroke = FALSE
+                       highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront = TRUE),
+                       group = "Cumulative Cases"
+  ) %>%
+  leaflet::addPolygons(data = CoV_GA_pop, color = "black", weight = 1, smoothFactor = 0.5, opacity = 1,
+                       fillOpacity = 0.5, fillColor = ~pal_rate(cumrate), popup = ~popup2, # stroke = FALSE
+                       highlightOptions = highlightOptions(color = "white", weight = 2, bringToFront = TRUE),
+                       group = "Cumulative Rate"
+  ) %>%
+  leaflet::addLayersControl(baseGroups = c("OSM (Default)", "Terrain", "Topographic"),
+                            overlayGroups = c("Cumulative Cases", "Cumulative Rate per 100,000"),
+                            options = layersControlOptions(collapsed = FALSE)
+  ) %>% # layer selection
+  addLegend("topright", pal = pal_cum, values = ~cumulative,
+            title = "Cumulative Cases",
+            opacity = 1,
+            group = "Cumulative Cases") %>%
+  addLegend("topright", pal = pal_rate, values = ~cumrate,
+            title = "Cumulative Rate per 100,000",
+            opacity = 1,
+            group = "Cumulative Rate") %>%
+  leaflet::hideGroup(c("Cumulative Cases", "Cumulative Rate")) %>% # no data shown (default)
+  leaflet::addMiniMap() # add mini map
+ga_m1 # display leaflet plot
+
+### export leaflet plot
+htmlwidgets::saveWidget(ga_m1, file = "COVID_Georgia_Leaflet.html", selfcontained = TRUE)
+
 # -------------------- END OF CODE -------------------- #
