@@ -1,6 +1,6 @@
-# ------------------------------- #
-# SARS-CoV-2 in Georgia, U.S.A.
-# ------------------------------- #
+# ---------------------------------------- #
+# Cumulative SARS-CoV-2 in Georgia, U.S.A.
+# ---------------------------------------- #
 #
 # Created by: Ian Buller, Ph.D., M.A. (GitHub: @idblr)
 # Created on: April 11, 2020
@@ -16,7 +16,7 @@
 # E) 04/11/2020 (IB) - Added code for interactive leaflet plot (not to be widely disseminated)
 # F) 04/13/2020 (IB) - Cleaned up code and streamlined data management
 # G) 04/13/2020 (IB) - Added calculation for percent non-caucasian householders from 2010 Census Short Form
-# ------------------------------- #
+# ---------------------------------------- #
 
 ####################
 # SETTINGS & PATHS #
