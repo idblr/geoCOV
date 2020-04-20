@@ -40,5 +40,5 @@ rsconnect/
 *.DS_Store
 
 # Private and Sandbox R code
-*/COVID.R
+*/sandbox.R
 */geoCoV_GA_private.R
