@@ -36,3 +36,9 @@ Imports and cleans data from the John's Hopkins Whiting School of Engineering Ce
   25. Disease map standard deviation incidence of cumulative COVID-19 incidence per 100,000 (January 22, 2020 - April 10, 2020)
   26. Disease map residual random effects of cumulative COVID-19 incidence per 100,000 (January 22, 2020 - April 10, 2020)
   27. Disease map probability greater than zero of cumulative COVID-19 incidence per 100,000 (January 22, 2020 - April 10, 2020)
+  28. Local Getis-Ord Gi* of cumulative COVID-19 incidence per 100,000 (January 22, 2020 - April 10, 2020)
+  29. Significant local Getis-Ord Gi* of cumulative COVID-19 incidence per 100,000 (January 22, 2020 - April 10, 2020)
+  
+### Author
+
+* **Ian D. Buller** - *Occupational and Environmental Epidemiology Branch, Division of Cancer Epidemiology and Genetics, National Cancer Institute, National Institutes of Health, Rockville, Maryland* - [GitHub](https://github.com/idblr)

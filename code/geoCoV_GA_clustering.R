@@ -5,12 +5,13 @@
 # Created by: Ian Buller, Ph.D., M.A. (GitHub: @idblr)
 # Created on: April 13, 2020
 #
-# Recently modified by:
-# Recently modified on:
+# Recently modified by: @idblr
+# Recently modified on: September 22, 2020
 #
 # Notes:
 # A) 04/13/2020 (IB) - Builds upon data generated in the "geoCoV_CA.R" file
 # B) 04/13/2020 (IB) - Credit to Dr. Howard Chang (BIOS737 at Emory University)
+# C) 09/22/2020 (IB) - Added code for Local Gi* Statistic
 # ---------------------------------------- #
 
 ############
@@ -18,6 +19,7 @@
 ############
 
 library(DCluster)
+library(RColorBrewer)
 library(sp)
 library(spdep)
 
@@ -42,6 +44,8 @@ CoV_GA_UTM17N$I.local.p <- I.local[,5]
 CoV_GA_UTM17N$I.local.p_bonf <- p.adjust(I.local[,5], method = "bonferroni")
 CoV_GA_UTM17N$I.local.p_holm <- p.adjust(I.local[,5], method = "holm")
 CoV_GA_UTM17N$I.local.p_fdr <- p.adjust(I.local[,5], method = "fdr")
+
+f <- 1 # graphical expansion factor
 
 png(file = "figures/Georgia_LocalICumulativeRate_stat.png", height = 1000*f, width = 1000*f)
 sp::spplot(CoV_GA_UTM17N, 
@@ -118,6 +122,48 @@ sp::spplot(CoV_GA_UTM17N,
            col.regions = rev(grey.colors(256)),
            par.settings = list(axis.line = list(col =  'transparent'))
            )
+dev.off()
+
+# Getis-Ord Gi*
+Y <- CoV_GA_UTM17N@data$cumrate
+nb <- spdep::poly2nb(CoV_GA_UTM17N) # queen = TRUE
+col.W <- spdep::nb2listw(nb, style = "B")
+
+local_g <- spdep::localG(Y, col.W)
+CoV_GA_UTM17N$local_g <- as.numeric(local_g)
+
+# Diverging color palette
+at <- pretty(CoV_GA_UTM17N$local_g, n = 8)
+palpos <- RColorBrewer::brewer.pal(sum(at > 0),"Reds")
+palneg <- RColorBrewer::brewer.pal(sum(at < 0),"Blues")
+palette <- c(rev(palneg)[-1], "#FFFAF7", palpos)
+
+# Raw Gi* statistic
+png(file = "figures/Georgia_LocalG.png", height = 1000*f, width = 1000*f)
+sp::spplot(CoV_GA_UTM17N, 
+           "local_g",
+           main = "Local Gi* statistic",
+           col.regions = palette,
+           at = at,
+           par.settings = list(axis.line = list(col =  'transparent'))
+)
+dev.off()
+
+# Stastistically significant Gi* statistic
+## Gi* statistic can be interpreted as a Z-score
+alpha <- 0.05
+threshold <- qnorm(1 - alpha / 2)
+CoV_GA_UTM17N$local_gsig <- ifelse(CoV_GA_UTM17N$local_g > threshold, "hot-spot",
+                                   ifelse(CoV_GA_UTM17N$local_g < -threshold, "cold-spot", "insignificant"))
+CoV_GA_UTM17N$local_gsig <- factor(CoV_GA_UTM17N$local_gsig, levels = c("hot-spot", "insignificant", "cold-spot"))
+
+png(file = "figures/Georgia_LocalGsig.png", height = 1000*f, width = 1000*f)
+sp::spplot(CoV_GA_UTM17N, 
+           "local_gsig",
+           main = "Significant Local Gi* statistic",
+           col.regions = c("red", "grey", "blue"),
+           par.settings = list(axis.line = list(col =  'transparent'))
+)
 dev.off()
 
 #####################################
