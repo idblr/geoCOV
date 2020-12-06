@@ -31,6 +31,8 @@ load(file = "data/CoV_GA.Rdata")
 ##########################
 
 Y <- CoV_GA_UTM17N@data$cumrate # cumulative incidence rate per 100,000
+nb <- spdep::poly2nb(CoV_GA_UTM17N) # queen = TRUE
+nb2 <- spdep::poly2nb(CoV_GA_UTM17N, queen = FALSE)
 W <- spdep::nb2mat(nb, style = "W")
 WY <- W %*% Y
 
