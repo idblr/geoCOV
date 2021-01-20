@@ -20,6 +20,7 @@
 
 library(DCluster)
 library(RColorBrewer)
+library(SpatialEpi)
 library(sp)
 library(spdep)
 
@@ -175,6 +176,34 @@ dismap <- data.frame(Observed = CoV_GA_UTM17N$cumulative,
                      )
 theta_0 <- sum(dismap$Observed)/sum(dismap$Pop)
 dismap$Expected <- dismap$Pop * theta_0
+
+# Emperical Bayes
+empB <- SpatialEpi::eBayes(dismap$Observed, dismap$Expected)
+CoV_GA_UTM17N$lRR <- empB$RR
+
+png(file = "figures/Georgia_EmpiricalBayes.png", height = 1000*f, width = 1000*f)
+sp::spplot(CoV_GA_UTM17N, 
+           "lRR",
+           main = "Empirical Bayes Estimates of Relative Risk",
+           col.regions = grey.colors(256),
+           par.settings = list(axis.line = list(col =  'transparent')))
+dev.off()
+
+## Boxmap (Hinge = 1.5)
+hinge <- 1.5 * IQR(CoV_GA_UTM17N$RR)
+lowRR <- quantile(CoV_GA_UTM17N$RR)[2] - hinge
+highRR <- quantile(CoV_GA_UTM17N$RR)[4] + hinge
+
+CoV_GA_UTM17N$boxRR <- cut(CoV_GA_UTM17N$RR, 
+                           c(-Inf, lowRR, quantile(CoV_GA_UTM17N$RR)[2:4], highRR, Inf))
+
+png(file = "figures/Georgia_EmpiricalBayes_boxmap.png", height = 1000*f, width = 1000*f)
+sp::spplot(CoV_GA_UTM17N, 
+           "boxRR",
+           main = "Empirical Bayes Estimates of Relative Risk, Hinge = 1.5",
+           col.regions = rev(RColorBrewer::brewer.pal(6, "RdBu")),
+           par.settings = list(axis.line = list(col =  'transparent')))
+dev.off()
 
 # Chi-Squared Test
 ## Asymptotic test
